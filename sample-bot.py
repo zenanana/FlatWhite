@@ -7,6 +7,7 @@
 import argparse
 from collections import deque
 from enum import Enum
+from pickle import GLOBAL
 import time
 import socket
 import json
@@ -26,35 +27,55 @@ team_name = "FLATWHITE"
 # code is intended to be a working example, but it needs some improvement
 # before it will start making good trades!
 
-BOND_FAIR_VAL = 1000
-PORTFOLIO = {"BOND": 0}
-
-def conversion_strat(exchange, vale_buy, vale_sell, valbz_buy, valbz_sell, vale_size, valbz_size):
-    spread = valbz_sell - vale_buy
-    if spread >= 2:
-        min_size = 10 // spread + 1
-        # exchange.send_add
-
-
-
-def update_portfolio(message):
-    if message["dir"] == Dir.BUY:
-        PORTFOLIO[message["symbol"]] += message["size"]
-    elif message["dir"] == Dir.SELL:
-        PORTFOLIO[message["symbol"]] -= message["size"]
-
-
-def bond_strat_pennying(exchange, best_buy, best_sell):
-    bought = []
-    if best_buy + 1 < 1000:
-        exchange.send_add_message(order_id=1, symbol="BOND", dir=Dir.BUY, price=best_buy + 1, size=100-len(bought))
-        
-    if best_sell - 1 > 1000:
-        exchange.send_add_message(order_id=1, symbol="BOND", dir=Dir.SELL, price=best_buy - 1, size=100-len(bought))
 
 
 def main():
     args = parse_arguments()
+
+    BOND_FAIR_VAL = 1000
+    PORTFOLIO = {"BOND": 0}
+    GLOBAL_ID = 5
+
+    def update_portfolio(message):
+        if message["dir"] == Dir.BUY:
+            PORTFOLIO[message["symbol"]] += message["size"]
+        elif message["dir"] == Dir.SELL:
+            PORTFOLIO[message["symbol"]] -= message["size"]
+
+
+    def bond_strat_pennying(exchange, best_buy, best_sell, id):
+        if (best_buy + 1 <= 1000) and (100-PORTFOLIO["BOND"] > 0):
+            exchange.send_add_message(order_id=id, symbol="BOND", dir=Dir.BUY, price=best_buy + 1, size=10)
+            
+        if best_sell - 1 > 1000:
+            exchange.send_add_message(order_id=id, symbol="BOND", dir=Dir.SELL, price=best_sell - 1, size=PORTFOLIO["BOND"])
+
+
+    def conversion_strat(exchange, vale_buy, vale_sell, valbz_buy, valbz_sell, vale_buy_size, vale_sell_size, valbz_buy_size, valbz_sell_size):
+        spread = valbz_sell - vale_buy
+        if spread >= 2:
+            min_size = 10 // spread + 1
+            if (min_size <= vale_buy_size and min_size <= valbz_sell_size):
+                order_size = min(vale_buy_size, valbz_sell_size)
+                exchange.send_add_message(order_id=GLOBAL_ID, symbol="VALE", dir=Dir.BUY, price=vale_buy, size=order_size)
+                GLOBAL_ID += 1
+                exchange.send_convert_message(order_id=GLOBAL_ID, symbol="VALE", dir=Dir.SELL, size=order_size)
+                GLOBAL_ID += 1
+                exchange.send_add_message(order_id=GLOBAL_ID, symbol="VALBZ", dir=Dir.SELL, price=valbz_sell, size=order_size)
+                GLOBAL_ID += 1
+        
+        other_spread = vale_sell - valbz_buy
+        if other_spread >= 2:
+            min_size = 10 // other_spread + 1
+            if (min_size <= vale_sell_size and min_size <= valbz_buy_size):
+                order_size = min(vale_sell_size, valbz_buy_size)
+                exchange.send_add_message(order_id=GLOBAL_ID, symbol="VALBZ", dir=Dir.BUY, price=valbz_buy, size=min_size)
+                GLOBAL_ID += 1
+                exchange.send_convert_message(order_id=GLOBAL_ID, symbol="VALBZ", dir=Dir.SELL, size=min_size)
+                GLOBAL_ID += 1
+                exchange.send_add_message(order_id=GLOBAL_ID, symbol="VALE", dir=Dir.SELL, price=vale_sell, size=min_size)
+                GLOBAL_ID += 1
+
 
     exchange = ExchangeConnection(args=args)
 
@@ -135,7 +156,9 @@ def main():
                 bond_best_buy = best_price("buy")
                 bond_ask_price = best_price("sell")
 
-                bond_strat_pennying(exchange, bond_best_buy, bond_ask_price)
+                if bond_best_buy and bond_ask_price:
+                    bond_strat_pennying(exchange, bond_best_buy, bond_ask_price, GLOBAL_ID)
+                    GLOBAL_ID += 1
 
 
 # ~~~~~============== PROVIDED CODE ==============~~~~~
