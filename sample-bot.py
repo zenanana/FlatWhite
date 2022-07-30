@@ -110,6 +110,7 @@ def main():
     # message. Sending a message in response to every exchange message will
     # cause a feedback loop where your bot's messages will quickly be
     # rate-limited and ignored. Please, don't do that!
+
     while True:
         message = exchange.read_message()
 
@@ -160,6 +161,7 @@ def main():
                 if bond_best_buy and bond_ask_price:
                     bond_strat_pennying(exchange, bond_best_buy, bond_ask_price, GLOBAL_ID)
                     GLOBAL_ID += 1
+
 
 
 # ~~~~~============== PROVIDED CODE ==============~~~~~
