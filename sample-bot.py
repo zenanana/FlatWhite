@@ -26,6 +26,8 @@ team_name = "FLATWHITE"
 # code is intended to be a working example, but it needs some improvement
 # before it will start making good trades!
 
+# asdf
+
 
 def main():
     args = parse_arguments()
