@@ -29,6 +29,7 @@ team_name = "FLATWHITE"
 
 BOND_FAIR_VAL = 1000
 PORTFOLIO = {"BOND": 0}
+GLOBAL_ID = 5
 
 def update_portfolio(message):
     if message["dir"] == Dir.BUY:
@@ -38,12 +39,14 @@ def update_portfolio(message):
 
 
 def bond_strat_pennying(exchange, best_buy, best_sell):
-    bought = []
     if best_buy + 1 < 1000:
-        exchange.send_add_message(order_id=1, symbol="BOND", dir=Dir.BUY, price=best_buy + 1, size=100-len(bought))
+        exchange.send_add_message(order_id=GLOBAL_ID, symbol="BOND", dir=Dir.BUY, price=best_buy + 1, size=100-PORTFOLIO["BOND"])
+        GLOBAL_ID += 1
         
     if best_sell - 1 > 1000:
-        exchange.send_add_message(order_id=1, symbol="BOND", dir=Dir.SELL, price=best_buy - 1, size=100-len(bought))
+        exchange.send_add_message(order_id=GLOBAL_ID, symbol="BOND", dir=Dir.SELL, price=best_sell - 1, size=PORTFOLIO["BOND"])
+        GLOBAL_ID += 1
+
 
 
 def main():
