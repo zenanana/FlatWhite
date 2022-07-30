@@ -40,10 +40,10 @@ def update_portfolio(message):
 def bond_strat_pennying(exchange, best_buy, best_sell):
     bought = []
     if best_buy + 1 < 1000:
-        exchange.send_add_message(order_id=get_order_id(), symbol="BOND", dir=Dir.BUY, price=best_buy + 1, size=100-len(bought))
+        exchange.send_add_message(order_id=1, symbol="BOND", dir=Dir.BUY, price=best_buy + 1, size=100-len(bought))
         
     if best_sell - 1 > 1000:
-        exchange.send_add_message(order_id=get_order_id(), symbol="BOND", dir=Dir.SELL, price=best_buy - 1, size=100-len(bought))
+        exchange.send_add_message(order_id=1, symbol="BOND", dir=Dir.SELL, price=best_buy - 1, size=100-len(bought))
 
 
 def main():
