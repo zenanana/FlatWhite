@@ -42,8 +42,10 @@ def main():
     GLOBAL_ID = 5
     XLF_CONV_FEE = 100
 
-    XLF_BUY_TIMEOUT = 2
-    BURN_IN_TIMEOUT = 10
+    XLF_BUY_TIMEOUT = 4
+    BURN_IN_TIMEOUT = 5
+
+    PEN = 3
 
     XLF_LAST_CONVERT = datetime.now()
     START_TIME = datetime.now()
@@ -51,10 +53,12 @@ def main():
     def update_portfolio(message):
         if message["dir"] == Dir.BUY:
             PORTFOLIO[message["symbol"]] += message["size"]
+
         elif message["dir"] == Dir.SELL:
             PORTFOLIO[message["symbol"]] -= message["size"]
 
     def estimate_value(message):
+        return
         if message["buy"]:
             best_buy_price = message["buy"][0][0]
             best_buy_size = message["buy"][0][1]
@@ -103,6 +107,7 @@ def main():
                     
 
     def stock_pennying(exchange, symbol, fair, buy_price, sell_price, id):
+        return
         if buy_price + 1 < fair:
             capacity = min(LIMITS[symbol] - PORTFOLIO[symbol],SIZE_ESTIMATES[f"{symbol}_BUY"])
             order_size = capacity
@@ -120,9 +125,6 @@ def main():
                         wfc_buy, wfc_sell, wfc_buy_size, wfc_sell_size,
                         xlf_buy, xlf_sell, xlf_buy_size, xlf_sell_size,
                         id):
-        if (datetime.now() - START_TIME).total_seconds() < BURN_IN_TIMEOUT:
-            return False
-        
         if bond_buy and gs_buy and ms_buy and wfc_buy:
             xlf_fair = (3 * bond_buy + 2*gs_buy + 3*ms_buy + 2*wfc_buy) / 10
         else:
@@ -131,14 +133,15 @@ def main():
         if xlf_sell and xlf_fair:
             # buying indi, selling ETF
             # check we have enough to buy and convert
-            if (bond_buy_size < 3 or gs_buy_size < 2 or ms_buy_size < 3 or wfc_buy_size < 2 or xlf_sell_size < 10):
-                return False
-            trade_amount = min(bond_buy_size // 3, gs_buy_size // 2, ms_buy_size // 3, wfc_buy_size // 2, xlf_sell_size // 10)
-            if (trade_amount <= 0):
-                return False
 
-            spread = xlf_sell - xlf_fair - 1
-            if spread * 10 > XLF_CONV_FEE + 50:
+            trade_amount = max(1, min(bond_buy_size // 3, gs_buy_size // 2, ms_buy_size // 3, wfc_buy_size // 2, xlf_sell_size // 10))
+            # print(trade_amount)
+
+            spread = xlf_sell - xlf_fair
+            if spread * 10 * trade_amount > XLF_CONV_FEE * PEN:
+                #trade_amount = max(1, round(bond_buy_size / 3 + gs_buy_size / 2 + ms_buy_size / 3 + wfc_buy_size / 2 + xlf_sell_size / 10))
+                #trade_amount = 2
+
                 exchange.send_add_message(order_id=id, symbol="BOND", dir=Dir.BUY, price=bond_buy, size=3*trade_amount)
                 exchange.send_add_message(order_id=id+1, symbol="GS", dir=Dir.BUY, price=gs_buy, size=2*trade_amount)
                 exchange.send_add_message(order_id=id+2, symbol="MS", dir=Dir.BUY, price=ms_buy, size=3*trade_amount)
@@ -149,22 +152,31 @@ def main():
                 exchange.send_add_message(order_id=id+5, symbol="XLF", dir=Dir.SELL, price=xlf_sell - 1, size=10*trade_amount)
                 return True
 
+
         if bond_sell and gs_sell and ms_sell and wfc_sell:
             xlf_fair = (3 * bond_sell + 2*gs_sell + 3*ms_sell + 2*wfc_sell) / 10
         else:
             return False
 
+
         if xlf_fair and xlf_buy:
             # buying ETF, selling indi
             # check we have enough to buy and convert
+            """
             if (bond_sell_size < 3 or gs_sell_size < 2 or ms_sell_size < 3 or wfc_sell_size < 2 or xlf_buy_size < 10):
                 return False
             trade_amount = min(bond_sell_size // 3, gs_sell_size // 2, ms_sell_size // 3, wfc_sell_size // 2, xlf_buy_size // 10)
             if (trade_amount <= 0):
                 return False
+            """
 
-            other_spread = xlf_fair - xlf_buy - 1
-            if other_spread * 10 > XLF_CONV_FEE + 50:
+            other_spread = xlf_fair - xlf_buy
+            trade_amount = max(1, min(bond_buy_size // 3, gs_buy_size // 2, ms_buy_size // 3, wfc_buy_size // 2, xlf_sell_size // 10))
+            if other_spread * 10 * trade_amount > XLF_CONV_FEE * PEN:
+
+                # trade_amount = max(1, round(bond_sell_size / 3 + gs_sell_size / 2 + ms_sell_size / 3 + wfc_sell_size / 2 + xlf_buy_size / 10))
+                #trade_amount = 2
+
                 exchange.send_add_message(order_id=id, symbol="XLF", dir=Dir.BUY, price=xlf_buy+1, size=10*trade_amount)
 
                 exchange.send_convert_message(order_id=id+1, symbol="XLF", dir=Dir.SELL, size=10*trade_amount)
@@ -230,6 +242,7 @@ def main():
         elif message["type"] == "fill":
             print(message)
             update_portfolio(message)
+            estimate_value(message)
         elif message["type"] == "book":
             # START MESSAGE HELPERS
             def best_price(side):
@@ -286,7 +299,6 @@ def main():
             if message["symbol"] == "BOND":
                 update_estimates("BOND")
 
-                continue
                 if BUY_ESTIMATES["BOND"] and SELL_ESTIMATES["BOND"]:
                     bond_strat_pennying(exchange, BUY_ESTIMATES["BOND"], SELL_ESTIMATES["BOND"], GLOBAL_ID)
                     GLOBAL_ID += 1
@@ -294,6 +306,7 @@ def main():
             
             if message["symbol"] == "GS":
                 update_estimates("GS")
+                executed = False
                 if (datetime.now() - XLF_LAST_CONVERT).total_seconds() >= XLF_BUY_TIMEOUT:
                     XLF_LAST_CONVERT = datetime.now()
                     executed = xlf_conv_strat(exchange, 
@@ -310,54 +323,88 @@ def main():
                     GLOBAL_ID)
                     GLOBAL_ID += 10
 
-                """
                 if not executed:
                     if BUY_ESTIMATES["GS"] and SELL_ESTIMATES["GS"]:
                         stock_pennying(exchange, "GS", VALUE_ESTIMATES["GS"], BUY_ESTIMATES["GS"], SELL_ESTIMATES["GS"], GLOBAL_ID)
                         GLOBAL_ID += 1
-                """
+
     
             elif message["symbol"] == "MS":
                 update_estimates("MS")
+                executed = False
                 if (datetime.now() - XLF_LAST_CONVERT).total_seconds() >= XLF_BUY_TIMEOUT:
                     XLF_LAST_CONVERT = datetime.now()
-                    executed = xlf_conv_strat(exchange, BUY_ESTIMATES["BOND"], SELL_ESTIMATES["BOND"], BUY_ESTIMATES["GS"], SELL_ESTIMATES["GS"], BUY_ESTIMATES["MS"], SELL_ESTIMATES["MS"], BUY_ESTIMATES["WFC"], SELL_ESTIMATES["WFC"], BUY_ESTIMATES["XLF"], SELL_ESTIMATES["XLF"], GLOBAL_ID)
+                    executed = xlf_conv_strat(exchange, 
+                    BUY_ESTIMATES["BOND"], SELL_ESTIMATES["BOND"], SIZE_ESTIMATES["BOND_BUY"], SIZE_ESTIMATES["BOND_SELL"],
+
+                    BUY_ESTIMATES["GS"], SELL_ESTIMATES["GS"], SIZE_ESTIMATES["GS_BUY"], SIZE_ESTIMATES["GS_SELL"],
+
+                    BUY_ESTIMATES["MS"], SELL_ESTIMATES["MS"], SIZE_ESTIMATES["MS_BUY"], SIZE_ESTIMATES["MS_SELL"],
+
+                    BUY_ESTIMATES["WFC"], SELL_ESTIMATES["WFC"], SIZE_ESTIMATES["WFC_BUY"], SIZE_ESTIMATES["WFC_SELL"],
+
+                    BUY_ESTIMATES["XLF"], SELL_ESTIMATES["XLF"], SIZE_ESTIMATES["XLF_BUY"], SIZE_ESTIMATES["XLF_SELL"],
+                    
+                    GLOBAL_ID)
                     GLOBAL_ID += 10
 
-                """
                 if not executed:
                     if BUY_ESTIMATES["MS"] and SELL_ESTIMATES["MS"]:
                         stock_pennying(exchange, "MS", VALUE_ESTIMATES["MS"], BUY_ESTIMATES["MS"], SELL_ESTIMATES["MS"], GLOBAL_ID)
                         GLOBAL_ID += 1
-                """
+
 
             elif message["symbol"] == "WFC":
                 update_estimates("WFC")
+                executed = False
                 if (datetime.now() - XLF_LAST_CONVERT).total_seconds() >= XLF_BUY_TIMEOUT:
                     XLF_LAST_CONVERT = datetime.now()
-                    executed = xlf_conv_strat(exchange, BUY_ESTIMATES["BOND"], SELL_ESTIMATES["BOND"], BUY_ESTIMATES["GS"], SELL_ESTIMATES["GS"], BUY_ESTIMATES["MS"], SELL_ESTIMATES["MS"], BUY_ESTIMATES["WFC"], SELL_ESTIMATES["WFC"], BUY_ESTIMATES["XLF"], SELL_ESTIMATES["XLF"], GLOBAL_ID)
+                    executed = xlf_conv_strat(exchange, 
+                    BUY_ESTIMATES["BOND"], SELL_ESTIMATES["BOND"], SIZE_ESTIMATES["BOND_BUY"], SIZE_ESTIMATES["BOND_SELL"],
+
+                    BUY_ESTIMATES["GS"], SELL_ESTIMATES["GS"], SIZE_ESTIMATES["GS_BUY"], SIZE_ESTIMATES["GS_SELL"],
+
+                    BUY_ESTIMATES["MS"], SELL_ESTIMATES["MS"], SIZE_ESTIMATES["MS_BUY"], SIZE_ESTIMATES["MS_SELL"],
+
+                    BUY_ESTIMATES["WFC"], SELL_ESTIMATES["WFC"], SIZE_ESTIMATES["WFC_BUY"], SIZE_ESTIMATES["WFC_SELL"],
+
+                    BUY_ESTIMATES["XLF"], SELL_ESTIMATES["XLF"], SIZE_ESTIMATES["XLF_BUY"], SIZE_ESTIMATES["XLF_SELL"],
+                    
+                    GLOBAL_ID)
                     GLOBAL_ID += 10
 
-                """
+
                 if not executed:
                     if BUY_ESTIMATES["WFC"] and SELL_ESTIMATES["WFC"]:
                         stock_pennying(exchange, "WFC", VALUE_ESTIMATES["WFC"], BUY_ESTIMATES["WFC"], SELL_ESTIMATES["WFC"], GLOBAL_ID)
                         GLOBAL_ID += 1
-                """
+
 
             elif message["symbol"] == "XLF":
                 update_estimates("XLF")
+                executed = False
                 if (datetime.now() - XLF_LAST_CONVERT).total_seconds() >= XLF_BUY_TIMEOUT:
                     XLF_LAST_CONVERT = datetime.now()
-                    executed = xlf_conv_strat(exchange, BUY_ESTIMATES["BOND"], SELL_ESTIMATES["BOND"], BUY_ESTIMATES["GS"], SELL_ESTIMATES["GS"], BUY_ESTIMATES["MS"], SELL_ESTIMATES["MS"], BUY_ESTIMATES["WFC"], SELL_ESTIMATES["WFC"], BUY_ESTIMATES["XLF"], SELL_ESTIMATES["XLF"], GLOBAL_ID)
+                    executed = xlf_conv_strat(exchange, 
+                    BUY_ESTIMATES["BOND"], SELL_ESTIMATES["BOND"], SIZE_ESTIMATES["BOND_BUY"], SIZE_ESTIMATES["BOND_SELL"],
+
+                    BUY_ESTIMATES["GS"], SELL_ESTIMATES["GS"], SIZE_ESTIMATES["GS_BUY"], SIZE_ESTIMATES["GS_SELL"],
+
+                    BUY_ESTIMATES["MS"], SELL_ESTIMATES["MS"], SIZE_ESTIMATES["MS_BUY"], SIZE_ESTIMATES["MS_SELL"],
+
+                    BUY_ESTIMATES["WFC"], SELL_ESTIMATES["WFC"], SIZE_ESTIMATES["WFC_BUY"], SIZE_ESTIMATES["WFC_SELL"],
+
+                    BUY_ESTIMATES["XLF"], SELL_ESTIMATES["XLF"], SIZE_ESTIMATES["XLF_BUY"], SIZE_ESTIMATES["XLF_SELL"],
+                    
+                    GLOBAL_ID)
                     GLOBAL_ID += 10
 
-                """"
+
                 if not executed:
                     if BUY_ESTIMATES["XLF"] and SELL_ESTIMATES["XLF"]:
                         stock_pennying(exchange, "XLF", VALUE_ESTIMATES["XLF"], BUY_ESTIMATES["XLF"], SELL_ESTIMATES["XLF"], GLOBAL_ID)
                         GLOBAL_ID += 1
-                """
+
                 
                 
 
