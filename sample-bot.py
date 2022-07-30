@@ -42,7 +42,11 @@ def main():
     GLOBAL_ID = 5
     XLF_CONV_FEE = 100
 
+    XLF_BUY_TIMEOUT = 2
+    BURN_IN_TIMEOUT = 10
+
     XLF_LAST_CONVERT = datetime.now()
+    START_TIME = datetime.now()
 
     def update_portfolio(message):
         if message["dir"] == Dir.BUY:
@@ -115,6 +119,8 @@ def main():
                         ms_buy, ms_sell,
                         wfc_buy, wfc_sell,
                         xlf_buy, xlf_sell, id):
+        if (datetime.now() - START_TIME).total_seconds() < BURN_IN_TIMEOUT:
+            return False
         
         if bond_buy and gs_buy and ms_buy and wfc_buy:
             xlf_fair = (3 * bond_buy + 2*gs_buy + 3*ms_buy + 2*wfc_buy) / 10
@@ -122,7 +128,7 @@ def main():
             return False
 
         if xlf_sell and xlf_fair:
-            spread = xlf_sell - xlf_fair
+            spread = xlf_sell - xlf_fair - 1
             if spread * 10 > XLF_CONV_FEE + 50:
                 exchange.send_add_message(order_id=id, symbol="BOND", dir=Dir.BUY, price=bond_buy, size=3)
                 exchange.send_add_message(order_id=id+1, symbol="GS", dir=Dir.BUY, price=gs_buy, size=2)
@@ -131,7 +137,7 @@ def main():
 
                 exchange.send_convert_message(order_id=id+4, symbol="XLF", dir=Dir.BUY, size=10)
 
-                exchange.send_add_message(order_id=id+5, symbol="XLF", dir=Dir.SELL, price=xlf_sell, size=10)
+                exchange.send_add_message(order_id=id+5, symbol="XLF", dir=Dir.SELL, price=xlf_sell - 1, size=10)
                 return True
 
         if bond_sell and gs_sell and ms_sell and wfc_sell:
@@ -140,9 +146,9 @@ def main():
             return False
 
         if xlf_fair and xlf_buy:
-            other_spread = xlf_fair - xlf_buy
+            other_spread = xlf_fair - xlf_buy - 1
             if other_spread * 10 > XLF_CONV_FEE + 50:
-                exchange.send_add_message(order_id=id, symbol="XLF", dir=Dir.BUY, price=xlf_buy, size=10)
+                exchange.send_add_message(order_id=id, symbol="XLF", dir=Dir.BUY, price=xlf_buy+1, size=10)
 
                 exchange.send_convert_message(order_id=id+1, symbol="XLF", dir=Dir.SELL, size=10)
 
@@ -227,7 +233,6 @@ def main():
                 #VALUE_ESTIMATES[message["symbol"]] = (VALUE_ESTIMATES[message["symbol"]] + temp_est / 2)
                 VALUE_ESTIMATES[message["symbol"]] = temp_est
         
-            """
             if message["symbol"] == "VALE":
                 update_estimates("VALE")
 
@@ -259,7 +264,7 @@ def main():
                     )
                     conversion_strat(exchange,  BUY_ESTIMATES["VALE"], SELL_ESTIMATES["VALE"], BUY_ESTIMATES["VALBZ"], SELL_ESTIMATES["VALBZ"], SIZE_ESTIMATES["VALBZ_BUY"], SIZE_ESTIMATES["VALE_SELL"], SIZE_ESTIMATES["VALBZ_BUY"], SIZE_ESTIMATES["VALBZ_SELL"], GLOBAL_ID)
                     GLOBAL_ID += 3
-            """
+
 
             if message["symbol"] == "BOND":
                 update_estimates("BOND")
@@ -272,7 +277,7 @@ def main():
             
             if message["symbol"] == "GS":
                 update_estimates("GS")
-                if (datetime.now() - XLF_LAST_CONVERT).total_seconds() >= 5:
+                if (datetime.now() - XLF_LAST_CONVERT).total_seconds() >= XLF_BUY_TIMEOUT:
                     XLF_LAST_CONVERT = datetime.now()
                     executed = xlf_conv_strat(exchange, BUY_ESTIMATES["BOND"], SELL_ESTIMATES["BOND"], BUY_ESTIMATES["GS"], SELL_ESTIMATES["GS"], BUY_ESTIMATES["MS"], SELL_ESTIMATES["MS"], BUY_ESTIMATES["WFC"], SELL_ESTIMATES["WFC"], BUY_ESTIMATES["XLF"], SELL_ESTIMATES["XLF"], GLOBAL_ID)
                     GLOBAL_ID += 10
@@ -286,7 +291,7 @@ def main():
     
             elif message["symbol"] == "MS":
                 update_estimates("MS")
-                if (datetime.now() - XLF_LAST_CONVERT).total_seconds() >= 5:
+                if (datetime.now() - XLF_LAST_CONVERT).total_seconds() >= XLF_BUY_TIMEOUT:
                     XLF_LAST_CONVERT = datetime.now()
                     executed = xlf_conv_strat(exchange, BUY_ESTIMATES["BOND"], SELL_ESTIMATES["BOND"], BUY_ESTIMATES["GS"], SELL_ESTIMATES["GS"], BUY_ESTIMATES["MS"], SELL_ESTIMATES["MS"], BUY_ESTIMATES["WFC"], SELL_ESTIMATES["WFC"], BUY_ESTIMATES["XLF"], SELL_ESTIMATES["XLF"], GLOBAL_ID)
                     GLOBAL_ID += 10
@@ -300,7 +305,7 @@ def main():
 
             elif message["symbol"] == "WFC":
                 update_estimates("WFC")
-                if (datetime.now() - XLF_LAST_CONVERT).total_seconds() >= 5:
+                if (datetime.now() - XLF_LAST_CONVERT).total_seconds() >= XLF_BUY_TIMEOUT:
                     XLF_LAST_CONVERT = datetime.now()
                     executed = xlf_conv_strat(exchange, BUY_ESTIMATES["BOND"], SELL_ESTIMATES["BOND"], BUY_ESTIMATES["GS"], SELL_ESTIMATES["GS"], BUY_ESTIMATES["MS"], SELL_ESTIMATES["MS"], BUY_ESTIMATES["WFC"], SELL_ESTIMATES["WFC"], BUY_ESTIMATES["XLF"], SELL_ESTIMATES["XLF"], GLOBAL_ID)
                     GLOBAL_ID += 10
@@ -314,7 +319,7 @@ def main():
 
             elif message["symbol"] == "XLF":
                 update_estimates("XLF")
-                if (datetime.now() - XLF_LAST_CONVERT).total_seconds() >= 5:
+                if (datetime.now() - XLF_LAST_CONVERT).total_seconds() >= XLF_BUY_TIMEOUT:
                     XLF_LAST_CONVERT = datetime.now()
                     executed = xlf_conv_strat(exchange, BUY_ESTIMATES["BOND"], SELL_ESTIMATES["BOND"], BUY_ESTIMATES["GS"], SELL_ESTIMATES["GS"], BUY_ESTIMATES["MS"], SELL_ESTIMATES["MS"], BUY_ESTIMATES["WFC"], SELL_ESTIMATES["WFC"], BUY_ESTIMATES["XLF"], SELL_ESTIMATES["XLF"], GLOBAL_ID)
                     GLOBAL_ID += 10
