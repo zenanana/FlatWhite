@@ -114,11 +114,12 @@ def main():
 
 
     def xlf_conv_strat(exchange,
-                        bond_buy, bond_sell,
-                        gs_buy, gs_sell,
-                        ms_buy, ms_sell,
-                        wfc_buy, wfc_sell,
-                        xlf_buy, xlf_sell, id):
+                        bond_buy, bond_sell, bond_buy_size, bond_sell_size,
+                        gs_buy, gs_sell, gs_buy_size, gs_sell_size,
+                        ms_buy, ms_sell, ms_buy_size, ms_sell_size,
+                        wfc_buy, wfc_sell, wfc_buy_size, wfc_sell_size,
+                        xlf_buy, xlf_sell, xlf_buy_size, xlf_sell_size,
+                        id):
         if (datetime.now() - START_TIME).total_seconds() < BURN_IN_TIMEOUT:
             return False
         
@@ -128,16 +129,24 @@ def main():
             return False
 
         if xlf_sell and xlf_fair:
+            # buying indi, selling ETF
+            # check we have enough to buy and convert
+            if (bond_buy_size < 3 or gs_buy_size < 2 or ms_buy_size < 3 or wfc_buy_size < 2 or xlf_sell_size < 10):
+                return False
+            trade_amount = min(bond_buy_size // 3, gs_buy_size // 2, ms_buy_size // 3, wfc_buy_size // 2, xlf_sell_size // 10)
+            if (trade_amount <= 0):
+                return False
+
             spread = xlf_sell - xlf_fair - 1
             if spread * 10 > XLF_CONV_FEE + 50:
-                exchange.send_add_message(order_id=id, symbol="BOND", dir=Dir.BUY, price=bond_buy, size=3)
-                exchange.send_add_message(order_id=id+1, symbol="GS", dir=Dir.BUY, price=gs_buy, size=2)
-                exchange.send_add_message(order_id=id+2, symbol="MS", dir=Dir.BUY, price=ms_buy, size=3)
-                exchange.send_add_message(order_id=id+3, symbol="WFC", dir=Dir.BUY, price=wfc_buy, size=2)
+                exchange.send_add_message(order_id=id, symbol="BOND", dir=Dir.BUY, price=bond_buy, size=3*trade_amount)
+                exchange.send_add_message(order_id=id+1, symbol="GS", dir=Dir.BUY, price=gs_buy, size=2*trade_amount)
+                exchange.send_add_message(order_id=id+2, symbol="MS", dir=Dir.BUY, price=ms_buy, size=3*trade_amount)
+                exchange.send_add_message(order_id=id+3, symbol="WFC", dir=Dir.BUY, price=wfc_buy, size=2*trade_amount)
 
-                exchange.send_convert_message(order_id=id+4, symbol="XLF", dir=Dir.BUY, size=10)
+                exchange.send_convert_message(order_id=id+4, symbol="XLF", dir=Dir.BUY, size=10*trade_amount)
 
-                exchange.send_add_message(order_id=id+5, symbol="XLF", dir=Dir.SELL, price=xlf_sell - 1, size=10)
+                exchange.send_add_message(order_id=id+5, symbol="XLF", dir=Dir.SELL, price=xlf_sell - 1, size=10*trade_amount)
                 return True
 
         if bond_sell and gs_sell and ms_sell and wfc_sell:
@@ -146,16 +155,24 @@ def main():
             return False
 
         if xlf_fair and xlf_buy:
+            # buying ETF, selling indi
+            # check we have enough to buy and convert
+            if (bond_sell_size < 3 or gs_sell_size < 2 or ms_sell_size < 3 or wfc_sell_size < 2 or xlf_buy_size < 10):
+                return False
+            trade_amount = min(bond_sell_size // 3, gs_sell_size // 2, ms_sell_size // 3, wfc_sell_size // 2, xlf_buy_size // 10)
+            if (trade_amount <= 0):
+                return False
+
             other_spread = xlf_fair - xlf_buy - 1
             if other_spread * 10 > XLF_CONV_FEE + 50:
-                exchange.send_add_message(order_id=id, symbol="XLF", dir=Dir.BUY, price=xlf_buy+1, size=10)
+                exchange.send_add_message(order_id=id, symbol="XLF", dir=Dir.BUY, price=xlf_buy+1, size=10*trade_amount)
 
-                exchange.send_convert_message(order_id=id+1, symbol="XLF", dir=Dir.SELL, size=10)
+                exchange.send_convert_message(order_id=id+1, symbol="XLF", dir=Dir.SELL, size=10*trade_amount)
 
-                exchange.send_add_message(order_id=id+2, symbol="BOND", dir=Dir.SELL, price=bond_sell, size=3)
-                exchange.send_add_message(order_id=id+3, symbol="GS", dir=Dir.SELL, price=gs_sell, size=2)
-                exchange.send_add_message(order_id=id+4, symbol="MS", dir=Dir.SELL, price=ms_sell, size=3)
-                exchange.send_add_message(order_id=id+5, symbol="WFC", dir=Dir.SELL, price=wfc_sell, size=2)
+                exchange.send_add_message(order_id=id+2, symbol="BOND", dir=Dir.SELL, price=bond_sell, size=3*trade_amount)
+                exchange.send_add_message(order_id=id+3, symbol="GS", dir=Dir.SELL, price=gs_sell, size=2*trade_amount)
+                exchange.send_add_message(order_id=id+4, symbol="MS", dir=Dir.SELL, price=ms_sell, size=3*trade_amount)
+                exchange.send_add_message(order_id=id+5, symbol="WFC", dir=Dir.SELL, price=wfc_sell, size=2*trade_amount)
                 return True
         
         return False
@@ -279,7 +296,18 @@ def main():
                 update_estimates("GS")
                 if (datetime.now() - XLF_LAST_CONVERT).total_seconds() >= XLF_BUY_TIMEOUT:
                     XLF_LAST_CONVERT = datetime.now()
-                    executed = xlf_conv_strat(exchange, BUY_ESTIMATES["BOND"], SELL_ESTIMATES["BOND"], BUY_ESTIMATES["GS"], SELL_ESTIMATES["GS"], BUY_ESTIMATES["MS"], SELL_ESTIMATES["MS"], BUY_ESTIMATES["WFC"], SELL_ESTIMATES["WFC"], BUY_ESTIMATES["XLF"], SELL_ESTIMATES["XLF"], GLOBAL_ID)
+                    executed = xlf_conv_strat(exchange, 
+                    BUY_ESTIMATES["BOND"], SELL_ESTIMATES["BOND"], SIZE_ESTIMATES["BOND_BUY"], SIZE_ESTIMATES["BOND_SELL"],
+
+                    BUY_ESTIMATES["GS"], SELL_ESTIMATES["GS"], SIZE_ESTIMATES["GS_BUY"], SIZE_ESTIMATES["GS_SELL"],
+
+                    BUY_ESTIMATES["MS"], SELL_ESTIMATES["MS"], SIZE_ESTIMATES["MS_BUY"], SIZE_ESTIMATES["MS_SELL"],
+
+                    BUY_ESTIMATES["WFC"], SELL_ESTIMATES["WFC"], SIZE_ESTIMATES["WFC_BUY"], SIZE_ESTIMATES["WFC_SELL"],
+
+                    BUY_ESTIMATES["XLF"], SELL_ESTIMATES["XLF"], SIZE_ESTIMATES["XLF_BUY"], SIZE_ESTIMATES["XLF_SELL"],
+                    
+                    GLOBAL_ID)
                     GLOBAL_ID += 10
 
                 """
