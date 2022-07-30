@@ -47,6 +47,19 @@ def main():
         elif message["dir"] == Dir.SELL:
             PORTFOLIO[message["symbol"]] -= message["size"]
 
+    def estimate_value(message):
+        if message["buy"]:
+            best_buy_price = message["buy"][0][0]
+            best_buy_size = message["buy"][0][1]
+        if message["sell"]:
+            best_sell_price = message["sell"][0][0]
+            best_sell_size = message["sell"][0][1]
+        
+        temp = (best_buy_price * best_buy_size + best_sell_price * best_sell_size) / (best_buy_size + best_sell_size)
+        est_value = best_buy_price + (best_sell_price - temp)
+        # TODO (update this function as we develop better ways of estimating stock value)
+        return est_value
+
 
     def bond_strat_pennying(exchange, best_buy, best_sell, id):
         if (best_buy + 1 <= BOND_FAIR_VAL) and (100-PORTFOLIO["BOND"] > 0):
@@ -132,6 +145,8 @@ def main():
             print(message)
             update_portfolio(message)
         elif message["type"] == "book":
+            VALUE_ESTIMATES[message["symbol"]] = estimate_value(message)
+            
             if message["symbol"] == "VALE":
 
                 def best_price(side):
