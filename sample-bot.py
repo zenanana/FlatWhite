@@ -33,7 +33,8 @@ def main():
     args = parse_arguments()
 
     BOND_FAIR_VAL = 1000
-    PORTFOLIO = {"BOND": 0}
+    PORTFOLIO = {"BOND": 0, "VALBZ": 0, "VALE": 0, "GS": 0, "MS": 0, "WFC": 0, "XLF": 0}
+    LIMITS = {"BOND": 100, "VALBZ": 10, "VALE": 10, "GS": 100, "MS": 100, "WFC": 100, "XLF": 100}
     GLOBAL_ID = 5
 
     def update_portfolio(message):
@@ -44,10 +45,10 @@ def main():
 
 
     def bond_strat_pennying(exchange, best_buy, best_sell, id):
-        if (best_buy + 1 <= 1000) and (100-PORTFOLIO["BOND"] > 0):
-            exchange.send_add_message(order_id=id, symbol="BOND", dir=Dir.BUY, price=best_buy + 1, size=10)
+        if (best_buy + 1 <= BOND_FAIR_VAL) and (100-PORTFOLIO["BOND"] > 0):
+            exchange.send_add_message(order_id=id, symbol="BOND", dir=Dir.BUY, price=best_buy + 1, size=LIMITS["BOND"]-PORTFOLIO["BOND"]-1)
             
-        if best_sell - 1 > 1000:
+        if best_sell - 1 > BOND_FAIR_VAL:
             exchange.send_add_message(order_id=id, symbol="BOND", dir=Dir.SELL, price=best_sell - 1, size=PORTFOLIO["BOND"])
 
 
