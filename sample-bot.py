@@ -36,7 +36,7 @@ def main():
     VALUE_ESTIMATES = {"BOND": 0, "VALBZ": 0, "VALE": 0, "GS": 0, "MS": 0, "WFC": 0, "XLF": 0}
     BUY_ESTIMATES = {"BOND": 0, "VALBZ": 0, "VALE": 0, "GS": 0, "MS": 0, "WFC": 0, "XLF": 0}
     SELL_ESTIMATES = {"BOND": 0, "VALBZ": 0, "VALE": 0, "GS": 0, "MS": 0, "WFC": 0, "XLF": 0}
-    SIZE_ESTIMATES={"BOND": 0, "VALE_BUY": 0, "VALE_SELL": 0, "VALBZ_BUY": 0, "VALBZ_SELL": 0, "GS": 0, "MS": 0, "WFC": 0, "XLF": 0}
+    SIZE_ESTIMATES={"BOND_BUY": 0, "BOND_SELL": 0, "VALE_BUY": 0, "VALE_SELL": 0, "VALBZ_BUY": 0, "VALBZ_SELL": 0, "GS_BUY": 0, "GS_SELL": 0, "MS_BUY": 0, "MS_SELL": 0, "WFC_BUY": 0, "WFC_SELL": 0, "XLF_BUY": 0, "XLF_SELL": 0}
     PORTFOLIO = {"BOND": 0, "VALBZ": 0, "VALE": 0, "GS": 0, "MS": 0, "WFC": 0, "XLF": 0}
     LIMITS = {"BOND": 100, "VALBZ": 10, "VALE": 10, "GS": 100, "MS": 100, "WFC": 100, "XLF": 100}
     GLOBAL_ID = 5
@@ -132,20 +132,26 @@ def main():
             print(message)
             update_portfolio(message)
         elif message["type"] == "book":
+            # START MESSAGE HELPERS
+            def best_price(side):
+                if message[side]:
+                    return message[side][0][0]
+            def best_size(side):
+                if message[side]:
+                    return message[side][0][1]
+            def update_estimates(sym):
+                BUY_ESTIMATES[sym] = best_price("buy")
+                SELL_ESTIMATES[sym] = best_price("sell")
+                SIZE_ESTIMATES[sym+"_BUY"] = best_size("buy")
+                SIZE_ESTIMATES[sym+"_SELL"] = best_size("sell")
+            # END MESSAGE HELPERS
+
             if message["symbol"] == "VALE":
-
-                def best_price(side):
-                    if message[side]:
-                        return message[side][0][0]
-                
-                def best_size(side):
-                    if message[side]:
-                        return message[side][0][1]
-
-                BUY_ESTIMATES["VALE"] = best_price("buy")
-                SELL_ESTIMATES["VALE"] = best_price("sell")
-                SIZE_ESTIMATES["VALE_BUY"] = best_size("buy")
-                SIZE_ESTIMATES["VALE_SELL"] = best_size("sell")
+                # BUY_ESTIMATES["VALE"] = best_price("buy")
+                # SELL_ESTIMATES["VALE"] = best_price("sell")
+                # SIZE_ESTIMATES["VALE_BUY"] = best_size("buy")
+                # SIZE_ESTIMATES["VALE_SELL"] = best_size("sell")
+                update_estimates("VALE")
 
                 now = time.time()
 
@@ -161,19 +167,11 @@ def main():
                     GLOBAL_ID += 3
 
             if message["symbol"] == "VALBZ":
-
-                def best_price(side):
-                    if message[side]:
-                        return message[side][0][0]
-
-                def best_size(side):
-                    if message[side]:
-                        return message[side][0][1]
-
-                BUY_ESTIMATES["VALBZ"] = best_price("buy")
-                SELL_ESTIMATES["VALBZ"] = best_price("sell")
-                SIZE_ESTIMATES["VALBZ_BUY"] =  best_size("buy")
-                SIZE_ESTIMATES["VALBZ_SELL"] =  best_size("sell")
+                # BUY_ESTIMATES["VALBZ"] = best_price("buy")
+                # SELL_ESTIMATES["VALBZ"] = best_price("sell")
+                # SIZE_ESTIMATES["VALBZ_BUY"] =  best_size("buy")
+                # SIZE_ESTIMATES["VALBZ_SELL"] =  best_size("sell")
+                update_estimates("VALBZ")
 
                 now = time.time()
 
