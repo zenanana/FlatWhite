@@ -40,6 +40,7 @@ def main():
     PORTFOLIO = {"BOND": 0, "VALBZ": 0, "VALE": 0, "GS": 0, "MS": 0, "WFC": 0, "XLF": 0}
     LIMITS = {"BOND": 100, "VALBZ": 10, "VALE": 10, "GS": 100, "MS": 100, "WFC": 100, "XLF": 100}
     GLOBAL_ID = 5
+    ETF_CONV_FEE = 100
 
     def update_portfolio(message):
         if message["dir"] == Dir.BUY:
@@ -77,6 +78,36 @@ def main():
                     exchange.send_add_message(order_id=id, symbol="VALBZ", dir=Dir.BUY, price=valbz_buy, size=min_size)
                     exchange.send_convert_message(order_id=id+1, symbol="VALBZ", dir=Dir.SELL, size=min_size)
                     exchange.send_add_message(order_id=id+2, symbol="VALE", dir=Dir.SELL, price=vale_sell, size=min_size)
+
+    def stock_pennying(exchange, symbol, fair, buy_price, sell_price):
+        if buy_price + 1 < fair:
+            capacity = LIMITS[symbol] - PORTFOLIO[symbol]
+            order_size = capacity / 5
+            exchange.send_add_message(order_id=id, symbol=symbol, dir=Dir.BUY, price=buy_price + 1, size=order_size)
+        elif sell_price - 1 > fair:
+            capacity = PORTFOLIO[symbol] + LIMITS[symbol]
+            order_size = capacity / 5
+            exchange.send_add_message(order_id=id, symbol=symbol, dir=Dir.SELL, price=sell_price - 1, size=order_size)
+
+    def xlf_conv_strat(exchange,
+                  gs_fair, gs_buy, gs_sell,
+                  ms_fair, ms_buy, ms_sell,
+                  wfc_fair, wfc_buy, wfc_sell,
+                  etf_buy, etf_sell):
+        etf_fair = (3 * BOND_FAIR_VAL + 2*gs_fair + 3*ms_fair + 2*wfc_fair) / 10
+
+        if 
+
+        if etf_market - etf_fair > ETF_CONV_FEE :
+            # buy components, convert to ETF, sell ETF
+            exchange.send_add_message(order_id=id, symbol="BOND", dir=Dir.BUY, price=valbz_buy, size=min_size)
+            exchange.send_add_message(order_id=id, symbol="GS", dir=Dir.BUY, price=valbz_buy, size=min_size)
+            exchange.send_add_message(order_id=id, symbol="MS", dir=Dir.BUY, price=valbz_buy, size=min_size)
+            exchange.send_add_message(order_id=id, symbol="WFC", dir=Dir.BUY, price=valbz_buy, size=min_size)
+        elif etf_fair - etf_market > :
+            # buy ETF, convert to components, sell components
+            return
+
 
 
     exchange = ExchangeConnection(args=args)
