@@ -10,7 +10,6 @@ from enum import Enum
 import time
 import socket
 import json
-from turtle import update
 
 # ~~~~~============== CONFIGURATION  ==============~~~~~
 # Replace "REPLACEME" with your team name!
@@ -29,6 +28,14 @@ team_name = "FLATWHITE"
 
 BOND_FAIR_VAL = 1000
 PORTFOLIO = {"BOND": 0}
+
+def conversion_strat(exchange, vale_buy, vale_sell, valbz_buy, valbz_sell, vale_size, valbz_size):
+    spread = valbz_sell - vale_buy
+    if spread >= 2:
+        min_size = 10 // spread + 1
+        # exchange.send_add
+
+
 
 def update_portfolio(message):
     if message["dir"] == Dir.BUY:
