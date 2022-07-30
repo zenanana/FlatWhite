@@ -109,18 +109,6 @@ def main():
                   etf_buy, etf_sell):
         etf_fair = (3 * BOND_FAIR_VAL + 2*gs_fair + 3*ms_fair + 2*wfc_fair) / 10
 
-        if 
-
-        if etf_market - etf_fair > ETF_CONV_FEE :
-            # buy components, convert to ETF, sell ETF
-            exchange.send_add_message(order_id=id, symbol="BOND", dir=Dir.BUY, price=valbz_buy, size=min_size)
-            exchange.send_add_message(order_id=id, symbol="GS", dir=Dir.BUY, price=valbz_buy, size=min_size)
-            exchange.send_add_message(order_id=id, symbol="MS", dir=Dir.BUY, price=valbz_buy, size=min_size)
-            exchange.send_add_message(order_id=id, symbol="WFC", dir=Dir.BUY, price=valbz_buy, size=min_size)
-        elif etf_fair - etf_market > :
-            # buy ETF, convert to components, sell components
-            return
-
 
 
     exchange = ExchangeConnection(args=args)
