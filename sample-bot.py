@@ -36,7 +36,7 @@ def main():
     VALUE_ESTIMATES = {"BOND": 0, "VALBZ": 0, "VALE": 0, "GS": 0, "MS": 0, "WFC": 0, "XLF": 0}
     BUY_ESTIMATES = {"BOND": 0, "VALBZ": 0, "VALE": 0, "GS": 0, "MS": 0, "WFC": 0, "XLF": 0}
     SELL_ESTIMATES = {"BOND": 0, "VALBZ": 0, "VALE": 0, "GS": 0, "MS": 0, "WFC": 0, "XLF": 0}
-    SIZE_ESTIMATES={"BOND": 0, "VALE_BUY": 0, "VALE_SELL": 0, "VALBZ_BUY": 0, "VALBZ_SELL": 0, "GS": 0, "MS": 0, "WFC": 0, "XLF": 0}
+    SIZE_ESTIMATES={"BOND_BUY": 0, "BOND_SELL": 0, "VALE_BUY": 0, "VALE_SELL": 0, "VALBZ_BUY": 0, "VALBZ_SELL": 0, "GS_BUY": 0, "GS_SELL": 0, "MS_BUY": 0, "MS_SELL": 0, "WFC_BUY": 0, "WFC_SELL": 0, "XLF_BUY": 0, "XLF_SELL": 0}
     PORTFOLIO = {"BOND": 0, "VALBZ": 0, "VALE": 0, "GS": 0, "MS": 0, "WFC": 0, "XLF": 0}
     LIMITS = {"BOND": 100, "VALBZ": 10, "VALE": 10, "GS": 100, "MS": 100, "WFC": 100, "XLF": 100}
     GLOBAL_ID = 5
@@ -47,6 +47,19 @@ def main():
             PORTFOLIO[message["symbol"]] += message["size"]
         elif message["dir"] == Dir.SELL:
             PORTFOLIO[message["symbol"]] -= message["size"]
+
+    def estimate_value(message):
+        if message["buy"]:
+            best_buy_price = message["buy"][0][0]
+            best_buy_size = message["buy"][0][1]
+        if message["sell"]:
+            best_sell_price = message["sell"][0][0]
+            best_sell_size = message["sell"][0][1]
+        
+        temp = (best_buy_price * best_buy_size + best_sell_price * best_sell_size) / (best_buy_size + best_sell_size)
+        est_value = best_buy_price + (best_sell_price - temp)
+        # TODO (update this function as we develop better ways of estimating stock value)
+        return est_value
 
 
     def bond_strat_pennying(exchange, best_buy, best_sell, id):
@@ -163,20 +176,28 @@ def main():
             print(message)
             update_portfolio(message)
         elif message["type"] == "book":
+            # START MESSAGE HELPERS
+            def best_price(side):
+                if message[side]:
+                    return message[side][0][0]
+            def best_size(side):
+                if message[side]:
+                    return message[side][0][1]
+            def update_estimates(sym):
+                BUY_ESTIMATES[sym] = best_price("buy")
+                SELL_ESTIMATES[sym] = best_price("sell")
+                SIZE_ESTIMATES[sym+"_BUY"] = best_size("buy")
+                SIZE_ESTIMATES[sym+"_SELL"] = best_size("sell")
+            # END MESSAGE HELPERS
+
+            VALUE_ESTIMATES[message["symbol"]] = estimate_value(message)
+            
             if message["symbol"] == "VALE":
-
-                def best_price(side):
-                    if message[side]:
-                        return message[side][0][0]
-                
-                def best_size(side):
-                    if message[side]:
-                        return message[side][0][1]
-
-                BUY_ESTIMATES["VALE"] = best_price("buy")
-                SELL_ESTIMATES["VALE"] = best_price("sell")
-                SIZE_ESTIMATES["VALE_BUY"] = best_size("buy")
-                SIZE_ESTIMATES["VALE_SELL"] = best_size("sell")
+                # BUY_ESTIMATES["VALE"] = best_price("buy")
+                # SELL_ESTIMATES["VALE"] = best_price("sell")
+                # SIZE_ESTIMATES["VALE_BUY"] = best_size("buy")
+                # SIZE_ESTIMATES["VALE_SELL"] = best_size("sell")
+                update_estimates("VALE")
 
                 now = time.time()
 
@@ -192,19 +213,11 @@ def main():
                     GLOBAL_ID += 3
 
             if message["symbol"] == "VALBZ":
-
-                def best_price(side):
-                    if message[side]:
-                        return message[side][0][0]
-
-                def best_size(side):
-                    if message[side]:
-                        return message[side][0][1]
-
-                BUY_ESTIMATES["VALBZ"] = best_price("buy")
-                SELL_ESTIMATES["VALBZ"] = best_price("sell")
-                SIZE_ESTIMATES["VALBZ_BUY"] =  best_size("buy")
-                SIZE_ESTIMATES["VALBZ_SELL"] =  best_size("sell")
+                # BUY_ESTIMATES["VALBZ"] = best_price("buy")
+                # SELL_ESTIMATES["VALBZ"] = best_price("sell")
+                # SIZE_ESTIMATES["VALBZ_BUY"] =  best_size("buy")
+                # SIZE_ESTIMATES["VALBZ_SELL"] =  best_size("sell")
+                update_estimates("VALBZ")
 
                 now = time.time()
 
