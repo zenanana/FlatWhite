@@ -103,23 +103,35 @@ def main():
             exchange.send_add_message(order_id=id, symbol=symbol, dir=Dir.SELL, price=sell_price - 1, size=order_size)
 
     def xlf_conv_strat(exchange,
-                  gs_fair, gs_buy, gs_sell,
-                  ms_fair, ms_buy, ms_sell,
-                  wfc_fair, wfc_buy, wfc_sell,
-                  etf_buy, etf_sell):
+                  gs_fair, gs_buy, gs_sell, gs_buy_size, gs_sell_size,
+                  ms_fair, ms_buy, ms_sell, ms_buy_size, ms_sell_size,
+                  wfc_fair, wfc_buy, wfc_sell, wfc_buy_size, wfc_sell_size,
+                  etf_buy, etf_sell, etf_buy_size, etf_sell_size):
         etf_fair = (3 * BOND_FAIR_VAL + 2*gs_fair + 3*ms_fair + 2*wfc_fair) / 10
-
-        if 
-
-        if etf_market - etf_fair > ETF_CONV_FEE :
+        # check if we have enough to convert to ETF
+        if (PORTFOLIO["GS"] >= 2 and PORTFOLIO["MS"] >= 3 and PORTFOLIO["WFC"] >= 2):
+            # check if conversion to ETF is worth it
+            can_conv_size = min(PORTFOLIO["GS"] // 2, PORTFOLIO["MS"] // 3, PORTFOLIO["WFC"] // 2)
+            can_buy_size = min(can_conv_size, etf_sell_size)
+            unrealized_prof = (etf_fair - etf_buy) * can_buy_size - 100
+            if (unrealized_prof > 0):
+                # gtg
+                # FIXME
+        # check if we have any ETF to convert to individuals
+        if (PORTFOLIO["XLF"] >= 1):
+            can_conv_size = PORTFOLIO["XLF"]
+            can_buy_size = min(can_conv_size, )
             # buy components, convert to ETF, sell ETF
-            exchange.send_add_message(order_id=id, symbol="BOND", dir=Dir.BUY, price=valbz_buy, size=min_size)
-            exchange.send_add_message(order_id=id, symbol="GS", dir=Dir.BUY, price=valbz_buy, size=min_size)
-            exchange.send_add_message(order_id=id, symbol="MS", dir=Dir.BUY, price=valbz_buy, size=min_size)
-            exchange.send_add_message(order_id=id, symbol="WFC", dir=Dir.BUY, price=valbz_buy, size=min_size)
+            # exchange.send_add_message(order_id=id, symbol="GS", dir=Dir.BUY, price=gs_buy, size=min_size)
+            # exchange.send_add_message(order_id=id, symbol="MS", dir=Dir.BUY, price=ms_buy, size=min_size)
+            # exchange.send_add_message(order_id=id, symbol="WFC", dir=Dir.BUY, price=wfc_buy, size=min_size)
+
+            # exchange.send_add_message(order_id=id, symbol="XLF", dir=Dir.SELL, price=etf_sell, size=min_size)
+
+
         elif etf_fair - etf_market > :
             # buy ETF, convert to components, sell components
-            return
+            exchange.send_add_message(order_id=)
 
 
 
