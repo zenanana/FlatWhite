@@ -56,11 +56,13 @@ def main():
             best_sell_price = message["sell"][0][0]
             best_sell_size = message["sell"][0][1]
         
-        temp = (best_buy_price * best_buy_size + best_sell_price * best_sell_size) / (best_buy_size + best_sell_size)
-        est_value = best_buy_price + (best_sell_price - temp)
-        # TODO (update this function as we develop better ways of estimating stock value)
-        return est_value
-
+        if message["buy"] and message["sell"]:
+            #temp = (best_buy_price * best_buy_size + best_sell_price * best_sell_size) / (best_buy_size + best_sell_size)
+            #est_value = best_buy_price + (best_sell_price - temp)
+            est_value = best_buy_price + best_sell_price / 2
+            # TODO (update this function as we develop better ways of estimating stock value)
+            return est_value
+        return None  # if no data
 
     def bond_strat_pennying(exchange, best_buy, best_sell, id):
         if (best_buy + 1 <= BOND_FAIR_VAL) and (100-PORTFOLIO["BOND"] > 0):
@@ -71,26 +73,28 @@ def main():
 
 
     def conversion_strat(exchange, vale_buy, vale_sell, valbz_buy, valbz_sell, vale_buy_size, vale_sell_size, valbz_buy_size, valbz_sell_size, id):
-        spread = valbz_sell - vale_buy
-        if spread >= 2:
-            min_size = 10 // spread + 1
-            if vale_buy_size and valbz_sell_size:
-                if (min_size <= vale_buy_size and min_size <= valbz_sell_size):
-                    order_size = min(vale_buy_size, valbz_sell_size)
-                    exchange.send_add_message(order_id=id, symbol="VALE", dir=Dir.BUY, price=vale_buy, size=order_size)
-                    exchange.send_convert_message(order_id=id+1, symbol="VALE", dir=Dir.SELL, size=order_size)
-                    exchange.send_add_message(order_id=id+2, symbol="VALBZ", dir=Dir.SELL, price=valbz_sell, size=order_size)
-                return
-        
-        other_spread = vale_sell - valbz_buy
-        if other_spread >= 2:
-            min_size = 10 // other_spread + 1
-            if vale_sell_size and valbz_buy_size:
-                if (min_size <= vale_sell_size and min_size <= valbz_buy_size):
-                    order_size = min(vale_sell_size, valbz_buy_size)
-                    exchange.send_add_message(order_id=id, symbol="VALBZ", dir=Dir.BUY, price=valbz_buy, size=min_size)
-                    exchange.send_convert_message(order_id=id+1, symbol="VALBZ", dir=Dir.SELL, size=min_size)
-                    exchange.send_add_message(order_id=id+2, symbol="VALE", dir=Dir.SELL, price=vale_sell, size=min_size)
+        if valbz_sell and vale_buy:
+            spread = valbz_sell - vale_buy
+            if spread >= 2:
+                min_size = 10 // spread + 1
+                if vale_buy_size and valbz_sell_size:
+                    if (min_size <= vale_buy_size and min_size <= valbz_sell_size):
+                        order_size = min(vale_buy_size, valbz_sell_size)
+                        exchange.send_add_message(order_id=id, symbol="VALE", dir=Dir.BUY, price=vale_buy, size=order_size)
+                        exchange.send_convert_message(order_id=id+1, symbol="VALE", dir=Dir.SELL, size=order_size)
+                        exchange.send_add_message(order_id=id+2, symbol="VALBZ", dir=Dir.SELL, price=valbz_sell, size=order_size)
+                    return
+        if vale_sell and valbz_buy:
+            other_spread = vale_sell - valbz_buy
+            if other_spread >= 2:
+                min_size = 10 // other_spread + 1
+                if vale_sell_size and valbz_buy_size:
+                    if (min_size <= vale_sell_size and min_size <= valbz_buy_size):
+                        order_size = min(vale_sell_size, valbz_buy_size)
+                        exchange.send_add_message(order_id=id, symbol="VALBZ", dir=Dir.BUY, price=valbz_buy, size=min_size)
+                        exchange.send_convert_message(order_id=id+1, symbol="VALBZ", dir=Dir.SELL, size=min_size)
+                        exchange.send_add_message(order_id=id+2, symbol="VALE", dir=Dir.SELL, price=vale_sell, size=min_size)
+                    
 
     def stock_pennying(exchange, symbol, fair, buy_price, sell_price):
         if buy_price + 1 < fair:
@@ -117,21 +121,20 @@ def main():
             if (unrealized_prof > 0):
                 # gtg
                 # FIXME
+                pass
         # check if we have any ETF to convert to individuals
-        if (PORTFOLIO["XLF"] >= 1):
-            can_conv_size = PORTFOLIO["XLF"]
-            can_buy_size = min(can_conv_size, )
-            # buy components, convert to ETF, sell ETF
-            # exchange.send_add_message(order_id=id, symbol="GS", dir=Dir.BUY, price=gs_buy, size=min_size)
-            # exchange.send_add_message(order_id=id, symbol="MS", dir=Dir.BUY, price=ms_buy, size=min_size)
-            # exchange.send_add_message(order_id=id, symbol="WFC", dir=Dir.BUY, price=wfc_buy, size=min_size)
 
-            # exchange.send_add_message(order_id=id, symbol="XLF", dir=Dir.SELL, price=etf_sell, size=min_size)
-
-
-        elif etf_fair - etf_market > :
-            # buy ETF, convert to components, sell components
-            exchange.send_add_message(order_id=)
+    def stock_pennying(exchange, symbol, fair, buy_price, sell_price, id):
+        if buy_price:
+            if buy_price + 1 < fair:
+                capacity = min(LIMITS[symbol] - PORTFOLIO[symbol], BUY_ESTIMATES[symbol])
+                order_size = capacity // 20
+                exchange.send_add_message(order_id=id, symbol=symbol, dir=Dir.BUY, price=buy_price + 1, size=order_size)
+        if sell_price:
+            if sell_price - 1 > fair:
+                capacity = min(PORTFOLIO[symbol] + LIMITS[symbol], SELL_ESTIMATES[symbol])
+                order_size = capacity // 20
+                exchange.send_add_message(order_id=id, symbol=symbol, dir=Dir.SELL, price=sell_price - 1, size=order_size)
 
 
 
@@ -202,13 +205,12 @@ def main():
                 SIZE_ESTIMATES[sym+"_SELL"] = best_size("sell")
             # END MESSAGE HELPERS
 
-            VALUE_ESTIMATES[message["symbol"]] = estimate_value(message)
-            
+            temp_est =  estimate_value(message)
+            if temp_est:
+                VALUE_ESTIMATES[message["symbol"]] = (VALUE_ESTIMATES[message["symbol"]] + temp_est / 2)
+        
+            """
             if message["symbol"] == "VALE":
-                # BUY_ESTIMATES["VALE"] = best_price("buy")
-                # SELL_ESTIMATES["VALE"] = best_price("sell")
-                # SIZE_ESTIMATES["VALE_BUY"] = best_size("buy")
-                # SIZE_ESTIMATES["VALE_SELL"] = best_size("sell")
                 update_estimates("VALE")
 
                 now = time.time()
@@ -224,11 +226,7 @@ def main():
                     conversion_strat(exchange,  BUY_ESTIMATES["VALE"], SELL_ESTIMATES["VALE"], BUY_ESTIMATES["VALBZ"], SELL_ESTIMATES["VALBZ"], SIZE_ESTIMATES["VALE_BUY"], SIZE_ESTIMATES["VALE_SELL"], SIZE_ESTIMATES["VALBZ_BUY"], SIZE_ESTIMATES["VALBZ_SELL"], GLOBAL_ID)
                     GLOBAL_ID += 3
 
-            if message["symbol"] == "VALBZ":
-                # BUY_ESTIMATES["VALBZ"] = best_price("buy")
-                # SELL_ESTIMATES["VALBZ"] = best_price("sell")
-                # SIZE_ESTIMATES["VALBZ_BUY"] =  best_size("buy")
-                # SIZE_ESTIMATES["VALBZ_SELL"] =  best_size("sell")
+            elif message["symbol"] == "VALBZ":
                 update_estimates("VALBZ")
 
                 now = time.time()
@@ -245,16 +243,42 @@ def main():
                     GLOBAL_ID += 3
                 
             elif message["symbol"] == "BOND":
-                def best_price(side):
-                    if message[side]:
-                        return message[side][0][0]
-                
-                BUY_ESTIMATES["BOND"] = best_price("buy")
-                SELL_ESTIMATES["BOND"] = best_price("sell")
+                update_estimates("BOND")
 
                 if BUY_ESTIMATES["BOND"] and SELL_ESTIMATES["BOND"]:
                     bond_strat_pennying(exchange, BUY_ESTIMATES["BOND"], SELL_ESTIMATES["BOND"], GLOBAL_ID)
                     GLOBAL_ID += 1
+            """
+            
+            if message["symbol"] == "GS":
+                update_estimates("GS")
+
+                if BUY_ESTIMATES["GS"] and SELL_ESTIMATES["GS"]:
+                    stock_pennying(exchange, "GS", VALUE_ESTIMATES["GS"], BUY_ESTIMATES["GS"], SELL_ESTIMATES["GS"], GLOBAL_ID)
+                    GLOBAL_ID += 1
+    
+            elif message["symbol"] == "MS":
+                update_estimates("MS")
+
+                if BUY_ESTIMATES["MS"] and SELL_ESTIMATES["MS"]:
+                    stock_pennying(exchange, "MS", VALUE_ESTIMATES["MS"], BUY_ESTIMATES["MS"], SELL_ESTIMATES["MS"], GLOBAL_ID)
+                    GLOBAL_ID += 1
+
+            elif message["symbol"] == "WFC":
+                update_estimates("WFC")
+
+                if BUY_ESTIMATES["WFC"] and SELL_ESTIMATES["WFC"]:
+                    stock_pennying(exchange, "WFC", VALUE_ESTIMATES["WFC"], BUY_ESTIMATES["WFC"], SELL_ESTIMATES["WFC"], GLOBAL_ID)
+                    GLOBAL_ID += 1
+
+            elif message["symbol"] == "XLF":
+                update_estimates("XLF")
+
+                if BUY_ESTIMATES["XLF"] and SELL_ESTIMATES["XLF"]:
+                    stock_pennying(exchange, "XLF", VALUE_ESTIMATES["XLF"], BUY_ESTIMATES["XLF"], SELL_ESTIMATES["XLF"], GLOBAL_ID)
+                    GLOBAL_ID += 1
+                
+                
 
 
 
