@@ -10,6 +10,7 @@ from enum import Enum
 import time
 import socket
 import json
+from turtle import update
 
 # ~~~~~============== CONFIGURATION  ==============~~~~~
 # Replace "REPLACEME" with your team name!
@@ -25,6 +26,24 @@ team_name = "FLATWHITE"
 # price, and it prints the current prices for VALE every second. The sample
 # code is intended to be a working example, but it needs some improvement
 # before it will start making good trades!
+
+BOND_FAIR_VAL = 1000
+PORTFOLIO = {"BOND": 0}
+
+def update_portfolio(message):
+    if message["dir"] == Dir.BUY:
+        PORTFOLIO[message["symbol"]] += message["size"]
+    elif message["dir"] == Dir.SELL:
+        PORTFOLIO[message["symbol"]] -= message["size"]
+
+
+def bond_strat_pennying(exchange, best_buy, best_sell):
+    bought = []
+    if best_buy + 1 < 1000:
+        exchange.send_add_message(order_id=get_order_id(), symbol="BOND", dir=Dir.BUY, price=best_buy + 1, size=100-len(bought))
+        
+    if best_sell - 1 > 1000:
+        exchange.send_add_message(order_id=get_order_id(), symbol="BOND", dir=Dir.SELL, price=best_buy - 1, size=100-len(bought))
 
 
 def main():
@@ -80,6 +99,7 @@ def main():
             print(message)
         elif message["type"] == "fill":
             print(message)
+            update_portfolio(message)
         elif message["type"] == "book":
             if message["symbol"] == "VALE":
 
@@ -100,6 +120,15 @@ def main():
                             "vale_ask_price": vale_ask_price,
                         }
                     )
+            elif message["symbol"] == "BOND":
+                def best_price(side):
+                    if message[side]:
+                        return message[side][0][0]
+                
+                bond_best_buy = best_price("buy")
+                bond_ask_price = best_price("sell")
+
+                bond_strat_pennying(exchange, bond_best_buy, bond_ask_price)
 
 
 # ~~~~~============== PROVIDED CODE ==============~~~~~
