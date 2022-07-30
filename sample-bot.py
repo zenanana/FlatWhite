@@ -7,10 +7,10 @@
 import argparse
 from collections import deque
 from enum import Enum
+from pickle import GLOBAL
 import time
 import socket
 import json
-from turtle import update
 
 # ~~~~~============== CONFIGURATION  ==============~~~~~
 # Replace "REPLACEME" with your team name!
@@ -27,30 +27,27 @@ team_name = "FLATWHITE"
 # code is intended to be a working example, but it needs some improvement
 # before it will start making good trades!
 
-BOND_FAIR_VAL = 1000
-PORTFOLIO = {"BOND": 0}
-GLOBAL_ID = 5
-
-def update_portfolio(message):
-    if message["dir"] == Dir.BUY:
-        PORTFOLIO[message["symbol"]] += message["size"]
-    elif message["dir"] == Dir.SELL:
-        PORTFOLIO[message["symbol"]] -= message["size"]
-
-
-def bond_strat_pennying(exchange, best_buy, best_sell):
-    if best_buy + 1 < 1000:
-        exchange.send_add_message(order_id=GLOBAL_ID, symbol="BOND", dir=Dir.BUY, price=best_buy + 1, size=100-PORTFOLIO["BOND"])
-        GLOBAL_ID += 1
-        
-    if best_sell - 1 > 1000:
-        exchange.send_add_message(order_id=GLOBAL_ID, symbol="BOND", dir=Dir.SELL, price=best_sell - 1, size=PORTFOLIO["BOND"])
-        GLOBAL_ID += 1
-
-
 
 def main():
     args = parse_arguments()
+
+    BOND_FAIR_VAL = 1000
+    PORTFOLIO = {"BOND": 0}
+    GLOBAL_ID = 5
+
+    def update_portfolio(message):
+        if message["dir"] == Dir.BUY:
+            PORTFOLIO[message["symbol"]] += message["size"]
+        elif message["dir"] == Dir.SELL:
+            PORTFOLIO[message["symbol"]] -= message["size"]
+
+
+    def bond_strat_pennying(exchange, best_buy, best_sell, id):
+        if (best_buy + 1 <= 1000) and (100-PORTFOLIO["BOND"] > 0):
+            exchange.send_add_message(order_id=id, symbol="BOND", dir=Dir.BUY, price=best_buy + 1, size=10)
+            
+        if best_sell - 1 > 1000:
+            exchange.send_add_message(order_id=id, symbol="BOND", dir=Dir.SELL, price=best_sell - 1, size=PORTFOLIO["BOND"])
 
     exchange = ExchangeConnection(args=args)
 
@@ -131,7 +128,9 @@ def main():
                 bond_best_buy = best_price("buy")
                 bond_ask_price = best_price("sell")
 
-                bond_strat_pennying(exchange, bond_best_buy, bond_ask_price)
+                if bond_best_buy and bond_ask_price:
+                    bond_strat_pennying(exchange, bond_best_buy, bond_ask_price, GLOBAL_ID)
+                    GLOBAL_ID += 1
 
 
 # ~~~~~============== PROVIDED CODE ==============~~~~~
