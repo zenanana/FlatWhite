@@ -1,5 +1,5 @@
 # FlatWhite
 
-Jane Street ETC
-Seattle, WA
+Jane Street ETC 
+Seattle, WA  
 2022
